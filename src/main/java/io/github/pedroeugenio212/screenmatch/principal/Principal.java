@@ -2,12 +2,16 @@ package io.github.pedroeugenio212.screenmatch.principal;
 
 import io.github.pedroeugenio212.screenmatch.model.DadosSerie;
 import io.github.pedroeugenio212.screenmatch.model.DadosTemporada;
+import io.github.pedroeugenio212.screenmatch.model.Episodio;
 import io.github.pedroeugenio212.screenmatch.service.ConsumoApi;
 import io.github.pedroeugenio212.screenmatch.service.ConverteDados;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class Principal
 {
@@ -22,28 +26,44 @@ public class Principal
     public void exibeMenu()
     {
 
-//	System.out.println("Digite o nome da série:");
-//	var nomeSerie = leitura.nextLine();
-//	var json = consumo.obterDados(ENDERECO + nomeSerie.replace(" ", "+") + API_KEY);
-//	DadosSerie dados = conversor.obterDados(json, DadosSerie.class);
-//	System.out.println(dados);
-//
-//	List<DadosTemporada> temporadas = new ArrayList<>();
-//	for (int i = 1; i < dados.totalTemporadas(); i++)
-//	{
-//	    json = consumo.obterDados(ENDERECO + nomeSerie.replace(" ", "+") + "&season=" + i + API_KEY);
-//	    DadosTemporada dadosTemporada = conversor.obterDados(json, DadosTemporada.class);
-//	    temporadas.add(dadosTemporada);
-//	}
-//
-//	temporadas.forEach(e -> e.episodios()
-//		.forEach(t -> System.out.println(t.titulo())));
-	List<String> nomes = Arrays.asList("Pedro","Beca", "Maria", "Raul");
-	nomes.stream()
-		.sorted() 
-		.limit(2)
-		.filter(e -> e.startsWith("B"))
-		.map(e -> e.toUpperCase())
+	System.out.println("Digite o nome da série:");
+	var nomeSerie = leitura.nextLine();
+	var json = consumo.obterDados(ENDERECO + nomeSerie.replace(" ", "+") + API_KEY);
+	DadosSerie dados = conversor.obterDados(json, DadosSerie.class);
+	System.out.println(dados);
+
+	List<DadosTemporada> temporadas = new ArrayList<>();
+	for (int i = 1; i < dados.totalTemporadas(); i++)
+	{
+	    json = consumo.obterDados(ENDERECO + nomeSerie.replace(" ", "+") + "&season=" + i + API_KEY);
+	    DadosTemporada dadosTemporada = conversor.obterDados(json, DadosTemporada.class);
+	    temporadas.add(dadosTemporada);
+	}
+
+	System.out.println("\n Top 5 episódios");
+
+	List<Episodio> episodios = temporadas.stream()
+		.flatMap(t -> t.episodios().stream()
+		.map(d -> new Episodio(t.numero(), d))
+		).collect(Collectors.toList());
+
+	episodios.stream()
+		.sorted(Comparator.comparing(Episodio::getAvaliacao).reversed())
+		.limit(5)
 		.forEach(System.out::println);
+
+	System.out.println("A partir de que ano você deseja ver os episódios?");
+	var ano = leitura.nextInt();
+	leitura.nextLine();
+
+	LocalDate dataBusca = LocalDate.of(ano, 1, 1);
+
+	episodios.stream()
+		.filter(e -> e.getDataLancamento() != null && e.getDataLancamento().isAfter(dataBusca))
+		.forEach(e -> System.out.println(
+		"Temporada: " + e.getTemporada()
+		+ ", Episódio: " + e.getTitulo()
+		+ ", Data Lançamento: " + e.getDataLancamento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+	));
     }
 }
